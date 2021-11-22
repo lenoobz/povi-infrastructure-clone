@@ -1,0 +1,66 @@
+name: "Terraform Prod Environment"
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  terraform:
+    name: "Terraform"
+    runs-on: ubuntu-latest
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # Checkout the repository to the GitHub Actions runner
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+
+      # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+      - name: Terraform Init
+        run: terraform init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
+
+          # Format all Terraform configuration filess
+      - name: Terraform Format
+        run: terraform fmt -recursive
+
+      # Select work space
+      - name: Terraform Workspace
+        run: terraform workspace select prod
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
+
+      # Checks that all Terraform configuration files valid
+      - name: Terraform Validate
+        run: terraform validate
+
+      # Generates an execution plan for Terraform
+      # - name: Terraform Plan
+      #   run: terraform plan
+      #   env:
+      #     AWS_ACCESS_KEY_ID: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
+      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
+
+      # Apply terraform
+      - name: Terraform Apply
+        run: terraform apply -var-file=prod.tfvars -auto-approve
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
+          TF_VAR_MONGO_DB_HOST: ${{ secrets.PROD_MONGO_DB_HOST }}
+          TF_VAR_MONGO_DB_USERNAME: ${{ secrets.PROD_MONGO_DB_USERNAME }}
+          TF_VAR_MONGO_DB_PASSWORD: ${{ secrets.PROD_MONGO_DB_PASSWORD }}
+          TF_VAR_GOOGLE_CLIENT_ID: ${{ secrets.PROD_GOOGLE_CLIENT_ID }}
+          TF_VAR_GOOGLE_CLIENT_SECRET: ${{ secrets.PROD_GOOGLE_CLIENT_SECRET }}
